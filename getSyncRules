@@ -1,0 +1,80 @@
+<#
+Export Sync Rule Mappings to CSV File
+#>
+
+
+#This function is for logging purpose
+$global:logArray = @()
+function Write-Log {
+    param (
+        [string]$Message
+    )
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $logEntry = "$timestamp - $Message"
+    Write-Host $logEntry
+    # Append the log entry to the log array
+    $global:logArray += $logEntry
+}
+
+$findAdSync = Get-Module -Name ADSync -ListAvailable | Select-Object Path
+Import-Module -Name $findAdSync.Path
+$syncRuleArray = Get-ADSyncRule
+
+$arrayToExport  = @()
+
+$totalRules = $syncRuleArray.Length
+Write-Log "Total Sync Rules Count: $totalRules"
+$ruleCount = 0 
+foreach ($syncRule in $syncRuleArray) {
+    $ruleCount += 1
+    #Write-Log "Processing Rule $ruleCount/$totalRules"
+    foreach ($mapping in $syncRule.AttributeFlowMappings) {
+
+        $infoPackage = @{
+            #Identifier = $syncRule.Identifier;
+            #InternalId = $syncRule.InternalId;
+            Name = $syncRule.Name
+            #Version = $syncRule.Version
+            Description = $syncRule.Description
+            #ImmutableTag = $syncRule.ImmutableTag
+            Connector = $syncRule.Connector
+            Direction = $syncRule.Direction
+            Disabled = $syncRule.Disabled
+            SourceObjectType = $syncRule.SourceObjectType
+            TargetObjectType = $syncRule.TargetObjectType
+            Precedence = $syncRule.Precedence
+            #PrecedenceAfter = $syncRule.PrecedenceAfter
+            #PrecedenceBefore = $syncRule.PrecedenceBefore
+            LinkType = $syncRule.LinkType
+            EnablePasswordSync = $syncRule.EnablePasswordSync
+            JoinFilter = $syncRule.JoinFilter.JoinConditionList | ConvertTo-Json -Depth 4
+            ScopeFilter = $syncRule.ScopeFilter.ScopeConditionList | ConvertTo-Json -Depth 4
+            #mapSource = $mapping.Source
+            mapDestination = $mapping.Destination
+            mapFlowType = $mapping.FlowType
+            mapExecuteOnce = $mapping.ExecuteOnce
+            #mapExpression = $mapping.Expression
+            mapValueMergeType = $mapping.ValueMergeType
+            mapMappingSourceAsString = $mapping.MappingSourceAsString
+            #SoftDeleteExpiryInterval = $syncRule.SoftDeleteExpiryInterval
+            #SourceNamespaceId = $syncRule.SourceNamespaceId
+            #TargetNamespaceId = $syncRule.TargetNamespaceId
+            #VersionAgnosticTag = $syncRule.VersionAgnosticTag
+            #TagVersion = $syncRule.TagVersion
+            IsStandardRule = $syncRule.IsStandardRule
+            IsLegacyCustomRule = $syncRule.IsLegacyCustomRule
+            JoinHash = $syncRule.JoinHash
+
+            }       
+        $arrayToExport += $infoPackage
+
+    }
+
+}
+
+$arrayToExport = foreach ($item in $arrayToExport) {
+    New-Object PSObject -Property $item
+    }
+$currentDate = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+Write-Log "Save Rule to CSV"
+$arrayToExport | Export-Csv -Path "$env:USERPROFILE\Desktop\syncRule_$currentDate.csv" -NoTypeInformation
